@@ -16,6 +16,11 @@ ENEMY_BULLET_SPEED = 220
 DIVE_SPEED = 170
 FORMATION_DROP_SPEED = 14
 
+DIVE_CHANCE_BASE = 0.0010
+DIVE_CHANCE_PER_LEVEL = 0.00015
+ENEMY_SHOT_CHANCE_BASE = 0.008
+ENEMY_SHOT_CHANCE_PER_LEVEL = 0.0012
+
 
 @dataclass
 class Bullet:
@@ -181,6 +186,7 @@ class Game:
         self.form_dir = 1
         self.time = 0.0
         self.flash = 0.0
+        self.dive_cooldown = 0.0
 
     def _spawn_wave(self):
         self.enemies = []
@@ -204,6 +210,7 @@ class Game:
         self.form_dir = 1
         self.time = 0.0
         self._spawn_wave()
+        self.dive_cooldown = 0.0
         self.sfx.play("start")
 
     def alive_enemies(self):
@@ -220,19 +227,29 @@ class Game:
             self.form_dir = -1
             self.formation_y += FORMATION_DROP_SPEED
 
+        self.dive_cooldown = max(0.0, self.dive_cooldown - dt)
+        diving_now = sum(1 for e in self.enemies if e.alive and e.diving)
+        max_divers = 1 + (1 if self.level >= 5 else 0)
+
         for e in self.enemies:
             if not e.alive:
                 continue
             if not e.diving:
                 e.x = self.formation_x + e.gx * 36
                 e.y = self.formation_y + e.gy * 30
-                if random.random() < 0.0022 + self.level * 0.0003:
+                if (
+                    diving_now < max_divers
+                    and self.dive_cooldown <= 0.0
+                    and random.random() < DIVE_CHANCE_BASE + self.level * DIVE_CHANCE_PER_LEVEL
+                ):
                     e.diving = True
                     e.dive_phase = random.random() * math.pi
+                    diving_now += 1
+                    self.dive_cooldown = random.uniform(0.45, 1.05)
             else:
                 e.y += DIVE_SPEED * dt
                 e.x += math.sin(e.dive_phase + e.y * 0.04) * 130 * dt
-                if random.random() < 0.013:
+                if random.random() < 0.006:
                     self.enemy_bullets.append(Bullet(e.x, e.y + 8, ENEMY_BULLET_SPEED, True))
                 if e.y > SCREEN_H + 20:
                     e.diving = False
@@ -292,7 +309,7 @@ class Game:
             self._update_enemies(dt)
             self._update_bullets(dt)
 
-            if random.random() < 0.02 + self.level * 0.003:
+            if random.random() < ENEMY_SHOT_CHANCE_BASE + self.level * ENEMY_SHOT_CHANCE_PER_LEVEL:
                 shooters = [e for e in self.alive_enemies() if not e.diving]
                 if shooters:
                     s = random.choice(shooters)
@@ -306,7 +323,7 @@ class Game:
 
         elif self.state == "ATTRACT":
             self._update_enemies(dt)
-            if random.random() < 0.025:
+            if random.random() < 0.012:
                 shooters = [e for e in self.alive_enemies() if e.alive]
                 if shooters:
                     s = random.choice(shooters)
