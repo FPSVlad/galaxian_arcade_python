@@ -2,7 +2,7 @@
 
 Небольшая аркада в стиле Galaxian, написанная на Python 3.9 + Pygame.
 
-## Особенности
+## Особенности игры
 
 - Аттракт-режим и стартовый экран в стиле аркадного автомата.
 - Система кредитов (`5` = insert coin, `1` = start).
@@ -27,14 +27,41 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Запуск
+## Запуск игры
 
 ```bash
 python3.9 main.py
 ```
 
-## Быстрый smoke-тест (headless)
+## Быстрый smoke-тест игры (headless)
 
 ```bash
 SDL_VIDEODRIVER=dummy python3.9 main.py --headless --max-frames 120
+```
+
+---
+
+## Webcam entropy RNG ("квантовый" генератор на шуме камеры)
+
+Добавлен отдельный скрипт `quantum_rng.py`, который берёт шум с веб-камеры и получает из него случайные данные.
+
+Что делает скрипт:
+- читает кадры с камеры;
+- берёт младшие биты пикселей;
+- применяет **Von Neumann extractor** (дебайас);
+- применяет SHA-256 conditioning;
+- выводит случайные байты в HEX и простую статистику (доля единиц).
+
+> Важно: это не сертифицированный аппаратный QRNG, но полезный практический источник энтропии для экспериментов.
+
+### Запуск RNG
+
+```bash
+python3.9 quantum_rng.py --device 0 --width 64 --height 48 --fps 30 --bytes 32
+```
+
+Пример с большим объёмом:
+
+```bash
+python3.9 quantum_rng.py --bytes 64 --timeout 12
 ```
